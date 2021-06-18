@@ -1,53 +1,36 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
-	"sync"
-	"time"
 
+	"github.com/kelseyhightower/envconfig"
+	"github.com/luizfonseca/imagery/pkg/handlers"
+	"github.com/luizfonseca/imagery/pkg/middleware"
 	"go.uber.org/zap"
 )
 
+type EnvConfig struct {
+	Port string `envconfig:"PORT" default:"4000"`
+}
+
 var logger *zap.Logger
 
-func withMiddleware(handlerFn http.HandlerFunc) http.HandlerFunc {
-	if logger == nil {
-		logger, _ = zap.NewProduction()
-	}
-
-	return func(rw http.ResponseWriter, r *http.Request) {
-		wg := sync.WaitGroup{}
-		wg.Add(1)
-		reqStart := time.Now()
-		go func() {
-			handlerFn(rw, r)
-			wg.Done()
-		}()
-		reqEnd := time.Since(reqStart)
-		logger.Info(
-			fmt.Sprintf("%s %s", r.Method, r.URL.Path),
-			zap.Duration("duration_ms", reqEnd*time.Millisecond),
-			zap.Int64("content_length", r.ContentLength),
-		)
-		wg.Wait()
-	}
-}
-
-// Handles: GET /
-func baseHandler(rw http.ResponseWriter, r *http.Request) {
-	rw.Header().Add("Content-Type", "application/json")
-	rw.WriteHeader(200)
-	body, _ := json.Marshal(map[string]interface{}{"name": "Leoni"})
-	rw.Write(body)
-}
-
 func main() {
-	router := http.NewServeMux()
+	var config EnvConfig
 
-	router.HandleFunc("/", withMiddleware(baseHandler))
+	err := envconfig.Process("imagery", &config)
+	if err != nil {
+		log.Fatalf("Could not process environment configuration %v", err)
+	}
 
-	logger.Info("Server started on port :4000")
-	http.ListenAndServe(":4000", router)
+	logger, _ = zap.NewProduction()
+	mux := http.NewServeMux()
+
+	ctxOptions := middleware.NewContextOptions(logger)
+	mux.HandleFunc("/v1/image", middleware.NewRoute(handlers.ImageHandler, ctxOptions))
+
+	logger.Info(fmt.Sprintf("Server started on port :%s", config.Port))
+	http.ListenAndServe(fmt.Sprintf(":%s", config.Port), mux)
 }

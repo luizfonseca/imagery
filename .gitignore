@@ -1,2 +1,6 @@
-tmp
+tmp/*.jpg
+tmp/*.png
+tmp/*.webp
+tmp/*.gif
+tmp/*.bmp
 /imagery
