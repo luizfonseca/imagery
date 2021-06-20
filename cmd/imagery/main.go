@@ -26,9 +26,10 @@ func main() {
 	}
 
 	logger, _ = zap.NewProduction()
+	client := &http.Client{}
 	mux := http.NewServeMux()
 
-	ctxOptions := middleware.NewContextOptions(logger)
+	ctxOptions := middleware.NewContextOptions(logger, client)
 	mux.HandleFunc("/v1/image", middleware.NewRoute(handlers.ImageHandler, ctxOptions))
 
 	logger.Info(fmt.Sprintf("Server started on port :%s", config.Port))

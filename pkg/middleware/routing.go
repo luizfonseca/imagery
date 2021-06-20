@@ -8,24 +8,42 @@ import (
 	"go.uber.org/zap"
 )
 
+type HandlerFunction func(context RouterContext)
 type RouterContext struct {
 	Response http.ResponseWriter
 	Request  *http.Request
 	Logger   *zap.Logger
+	Fetch    FetchFunc
 }
-
-type HandlerFunction func(context RouterContext)
 
 type ContextOptions struct {
 	Logger *zap.Logger
+	Client *http.Client
 }
 
-func NewContextOptions(logger *zap.Logger) ContextOptions {
+type FetchOptions struct {
+	Method  string
+	Url     string
+	Headers map[string]interface{}
+}
+type FetchFunc func(options FetchOptions) *http.Response
+
+func NewContextOptions(logger *zap.Logger, client *http.Client) ContextOptions {
 	ctxOptions := ContextOptions{
 		Logger: logger,
+		Client: client,
 	}
 
 	return ctxOptions
+}
+
+func NewFetch(ctxOptions ContextOptions) FetchFunc {
+	return func(options FetchOptions) *http.Response {
+		req, _ := http.NewRequest(options.Method, options.Url, nil)
+		res, _ := ctxOptions.Client.Do(req)
+
+		return res
+	}
 }
 
 func NewRoute(handlerFn HandlerFunction, ctxOptions ContextOptions) http.HandlerFunc {
@@ -34,6 +52,7 @@ func NewRoute(handlerFn HandlerFunction, ctxOptions ContextOptions) http.Handler
 			Logger:   ctxOptions.Logger,
 			Response: rw,
 			Request:  r,
+			Fetch:    NewFetch(ctxOptions),
 		}
 
 		reqStart := time.Now()

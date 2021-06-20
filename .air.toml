@@ -1,0 +1,12 @@
+root = "."
+tmp_dir = "./logs"
+
+[build]
+# Just plain old shell command. You could use `make` as well.
+cmd = "go build ./cmd/imagery"
+bin = "./imagery"
+exclude_dir = ["assets", "bin", "tmp"]
+exclude_unchanged = true
+delay = 500 #ms
+
+log = "logs/air.log" # This log file places in your tmp_dir.

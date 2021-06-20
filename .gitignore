@@ -4,3 +4,4 @@ tmp/*.webp
 tmp/*.gif
 tmp/*.bmp
 /imagery
+logs/*
